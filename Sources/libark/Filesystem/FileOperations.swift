@@ -60,5 +60,53 @@ public struct FileOperations {
             if written <= 0 { break }
             bytesWritten += written
         }
+    }    
+    // MARK: - Directory Operations
+    
+    public static func mkdir(at path: String, mode: mode_t = 0o755) throws {
+        let ret = path.withCString { p in
+            return Syscall._execute_secure(sys_no: 83, ptr1: UnsafeRawPointer(p), ptr2: UnsafeRawPointer(bitPattern: Int(mode)))
+        }
+        if ret < 0 {
+            throw SystemError(errNo: Int32(errno))
+        }
     }
+    
+    public static func rmdir(at path: String) throws {
+        let ret = path.withCString { p in
+            return Syscall._execute_secure(sys_no: 84, ptr1: UnsafeRawPointer(p))
+        }
+        if ret < 0 {
+            throw SystemError(errNo: Int32(errno))
+        }
+    }
+    
+    // MARK: - File Management
+    
+    public static func unlink(at path: String) throws {
+        let ret = path.withCString { p in
+            return Syscall._execute_secure(sys_no: 87, ptr1: UnsafeRawPointer(p))
+        }
+        if ret < 0 {
+            throw SystemError(errNo: Int32(errno))
+        }
+    }
+    
+    public static func rename(from oldPath: String, to newPath: String) throws {
+        let ret = oldPath.withCString { old in
+            return newPath.withCString { new in
+                return Syscall._execute_secure(sys_no: 82, ptr1: UnsafeRawPointer(old), ptr2: UnsafeRawPointer(new))
+            }
+        }
+        if ret < 0 {
+            throw SystemError(errNo: Int32(errno))
+        }
+    }
+    
+    public static func copy(from source: String, to destination: String) throws {
+        let contents = try readFile(at: source)
+        // For permissions, we should stat the file, but for simplicity we use 0o644
+        try writeFile(at: destination, contents: contents, mode: 0o644)
+    }
+
 }

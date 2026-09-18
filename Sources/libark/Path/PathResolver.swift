@@ -31,5 +31,23 @@ public struct PathResolver {
         }
         
         return String(cString: resolvedPtr)
+    }    
+    public static func resolveExecutable(_ name: String, environment: [String: String]? = nil) -> String? {
+        let pathVar = environment?["PATH"] ?? getenv("PATH").flatMap { String(cString: $0) } ?? "/bin:/usr/bin"
+        let paths = ["/system/apps", "/arkrt/apps"] + pathVar.split(separator: ":").map(String.init)
+        
+        for path in paths {
+            let fullPath = path + "/" + name
+            do {
+                let meta = try FileMetadata.stat(path: Path(fullPath))
+                if meta.fileType == .regular && meta.permissions.owner.execute {
+                    return fullPath
+                }
+            } catch {
+                continue
+            }
+        }
+        return nil
     }
+
 }
