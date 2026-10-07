@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>libark Documentation</title>
+    
+    <!-- Material 3 Web Components -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@material/web@1.0.0-pre.16/all.css">
+    
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    
+    <!-- Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --md-sys-color-primary: #6750a4;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #eaddff;
+            --md-sys-color-on-primary-container: #21005d;
+            --md-sys-color-secondary: #625b71;
+            --md-sys-color-tertiary: #7d5260;
+            --md-sys-color-surface: #fffbfe;
+            --md-sys-color-on-surface: #1c1b1f;
+            --md-sys-color-surface-variant: #e7e0ec;
+            --md-sys-color-on-surface-variant: #49454e;
+            --md-sys-color-background: #fffbfe;
+            --md-sys-color-error: #b3261e;
+            --transition-duration: 300ms;
+        }
+
+        [data-theme="dark"] {
+            --md-sys-color-primary: #d0bcff;
+            --md-sys-color-on-primary: #371e55;
+            --md-sys-color-primary-container: #4f378b;
+            --md-sys-color-on-primary-container: #eaddff;
+            --md-sys-color-secondary: #ccc7d8;
+            --md-sys-color-tertiary: #f1b6e1;
+            --md-sys-color-surface: #1c1b1f;
+            --md-sys-color-on-surface: #e6e1e6;
+            --md-sys-color-surface-variant: #49454e;
+            --md-sys-color-on-surface-variant: #cac7d0;
+            --md-sys-color-background: #1c1b1f;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Roboto', sans-serif;
+            background: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-surface);
+            overflow: hidden;
+            transition: background-color var(--transition-duration) ease, color var(--transition-duration) ease;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideDown 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title svg {
+            width: 28px;
+            height: 28px;
+            animation: rotate 20s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .theme-toggle {
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 24px;
+            padding: 8px 12px;
+            color: var(--md-sys-color-on-primary);
+            font-size: 18px;
+            transition: background var(--transition-duration) ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--md-sys-color-surface);
+            border-right: 1px solid var(--md-sys-color-surface-variant);
+            overflow-y: auto;
+            margin-top: 64px;
+            animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .nav-section {
+            padding: 16px 0;
+        }
+
+        .nav-section-title {
+            padding: 8px 24px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--md-sys-color-on-surface-variant);
+            letter-spacing: 0.4px;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all var(--transition-duration) ease;
+            border-left: 3px solid transparent;
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-primary);
+        }
+
+        .nav-item.active {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-primary);
+            border-left-color: var(--md-sys-color-primary);
+            font-weight: 500;
+        }
+
+        .nav-item-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            margin-top: 64px;
+            overflow: hidden;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            animation: fadeIn 0.6s ease var(--fade-delay, 0s);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 48px 32px;
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Markdown Styles */
+        .markdown-content h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 32px 0 16px 0;
+            color: var(--md-sys-color-primary);
+            animation: titleAppear 0.6s ease;
+        }
+
+        @keyframes titleAppear {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .markdown-content h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: var(--md-sys-color-primary);
+            border-bottom: 2px solid var(--md-sys-color-primary-container);
+            padding-bottom: 8px;
+        }
+
+        .markdown-content h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 16px 0 8px 0;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .markdown-content p {
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 12px 0;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin: 12px 0 12px 24px;
+        }
+
+        .markdown-content li {
+            margin: 6px 0;
+            line-height: 1.6;
+        }
+
+        .markdown-content code {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .markdown-content pre {
+            background: var(--md-sys-color-surface-variant);
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+            border-left: 4px solid var(--md-sys-color-primary);
+            animation: codeBlockAppear 0.6s ease;
+        }
+
+        @keyframes codeBlockAppear {
+            from {
+                opacity: 0;
+                transform: scaleX(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scaleX(1);
+            }
+        }
+
+        .markdown-content pre code {
+            background: none;
+            color: var(--md-sys-color-on-surface);
+            padding: 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid var(--md-sys-color-primary);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: var(--md-sys-color-on-surface-variant);
+            font-style: italic;
+            background: var(--md-sys-color-primary-container);
+            padding: 16px;
+            border-radius: 4px;
+        }
+
+        .markdown-content a {
+            color: var(--md-sys-color-primary);
+            text-decoration: none;
+            transition: all var(--transition-duration) ease;
+            border-bottom: 2px solid transparent;
+        }
+
+        .markdown-content a:hover {
+            border-bottom-color: var(--md-sys-color-primary);
+        }
+
+        /* Loading State */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--md-sys-color-primary-container);
+            border-top-color: var(--md-sys-color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            flex-direction: column;
+            gap: 24px;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--md-sys-color-primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--md-sys-color-on-primary-container);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                width: 240px;
+                height: calc(100vh - 64px);
+                z-index: 99;
+                transform: translateX(-100%);
+                transition: transform var(--transition-duration) ease;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .content-wrapper {
+                padding: 32px 16px;
+            }
+
+            .header {
+                justify-content: space-between;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v20M2 12h20M12 2a10 10 0 0 1 10 10M12 2a10 10 0 0 0-10 10"/>
+                </svg>
+                <span>libark Documentation</span>
+            </div>
+            <div class="header-controls">
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌙</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="nav-section">
+                <div class="nav-section-title">Documentation</div>
+                <div id="navItems"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area" id="contentArea">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading documentation...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Configuration
+        const GITHUB_REPO = 'ARK-OS-Swift-and-Linux/libark';
+        const GITHUB_API = 'https://api.github.com/repos';
+        const RAW_GITHUB = 'https://raw.githubusercontent.com';
+        
+        // State
+        let docs = [];
+        let currentDoc = null;
+
+        // Initialize marked options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false,
+        });
+
+        // Theme management
+        const themeToggle = document.getElementById('themeToggle');
+        const htmlElement = document.documentElement;
+
+        function initializeTheme() {
+            const isDark = localStorage.getItem('theme') === 'dark' || 
+                           window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(isDark ? 'dark' : 'light');
+        }
+
+        function setTheme(theme) {
+            htmlElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const current = htmlElement.getAttribute('data-theme');
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+
+        // Fetch markdown files
+        async function fetchDocumentation() {
+            try {
+                const response = await fetch(`${GITHUB_API}/${GITHUB_REPO}/contents/docs`);
+                if (!response.ok) throw new Error('Failed to fetch docs');
+                
+                const files = await response.json();
+                
+                // Filter markdown files and sort
+                docs = files
+                    .filter(file => file.name.endsWith('.md'))
+                    .sort((a, b) => {
+                        const order = ['README.md', 'Architecture.md', 'Filesystem.md', 'Formatting.md'];
+                        const aOrder = order.indexOf(a.name);
+                        const bOrder = order.indexOf(b.name);
+                        if (aOrder === -1 && bOrder === -1) return a.name.localeCompare(b.name);
+                        if (aOrder === -1) return 1;
+                        if (bOrder === -1) return -1;
+                        return aOrder - bOrder;
+                    });
+
+                // Also add root markdown files
+                const rootResponse = await fetch(`${GITHUB_API}/${GITHUB_REPO}/contents`);
+                if (rootResponse.ok) {
+                    const rootFiles = await rootResponse.json();
+                    const rootMarkdown = rootFiles
+                        .filter(file => file.name.endsWith('.md') && 
+                                      ['README.md', 'CONTRIBUTIONS.md', 'SECURITY.md', 'CREDITS.md'].includes(file.name))
+                        .sort((a, b) => {
+                            const order = ['README.md', 'CONTRIBUTIONS.md', 'SECURITY.md', 'CREDITS.md'];
+                            const aOrder = order.indexOf(a.name);
+                            const bOrder = order.indexOf(b.name);
+                            if (aOrder === -1 && bOrder === -1) return a.name.localeCompare(b.name);
+                            if (aOrder === -1) return 1;
+                            if (bOrder === -1) return -1;
+                            return aOrder - bOrder;
+                        });
+                    
+                    docs.unshift(...rootMarkdown);
+                }
+
+                renderNavigation();
+                
+                if (docs.length > 0) {
+                    loadDocument(0);
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error('Error fetching documentation:', error);
+                showError('Failed to load documentation');
+            }
+        }
+
+        // Render navigation
+        function renderNavigation() {
+            const navItems = document.getElementById('navItems');
+            navItems.innerHTML = '';
+
+            docs.forEach((doc, index) => {
+                const navItem = document.createElement('div');
+                navItem.className = 'nav-item';
+                if (index === 0) navItem.classList.add('active');
+                
+                const icon = getFileIcon(doc.name);
+                const name = doc.name.replace('.md', '');
+                
+                navItem.innerHTML = `
+                    <span class="nav-item-icon">${icon}</span>
+                    <span>${name}</span>
+                `;
+                
+                navItem.addEventListener('click', () => loadDocument(index));
+                navItems.appendChild(navItem);
+            });
+        }
+
+        // Load document
+        async function loadDocument(index) {
+            const doc = docs[index];
+            currentDoc = doc;
+
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+
+            // Show loading
+            const contentArea = document.getElementById('contentArea');
+            contentArea.innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading ${doc.name}...</div>
+                </div>
+            `;
+
+            try {
+                const url = `${RAW_GITHUB}/${GITHUB_REPO}/master/${doc.path}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch document');
+                
+                const markdown = await response.text();
+                const html = marked.parse(markdown);
+                const clean = DOMPurify.sanitize(html);
+
+                // Render content with stagger animation
+                contentArea.innerHTML = `
+                    <div class="content-wrapper">
+                        <div class="markdown-content">${clean}</div>
+                    </div>
+                `;
+
+                // Highlight code blocks
+                contentArea.querySelectorAll('pre code').forEach(block => {
+                    hljs.highlightElement(block);
+                });
+
+                contentArea.scrollTop = 0;
+            } catch (error) {
+                console.error('Error loading document:', error);
+                contentArea.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Failed to load ${doc.name}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Show empty state
+        function showEmptyState() {
+            document.getElementById('contentArea').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📚</div>
+                    <div class="empty-state-text">No documentation files found. Add .md files to the docs/ directory.</div>
+                </div>
+            `;
+        }
+
+        // Show error
+        function showError(message) {
+            document.getElementById('contentArea').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">❌</div>
+                    <div class="empty-state-text">${message}</div>
+                </div>
+            `;
+        }
+
+        // Get file icon
+        function getFileIcon(name) {
+            if (name === 'README.md') return '📖';
+            if (name === 'Architecture.md') return '🏗️';
+            if (name === 'Filesystem.md') return '📁';
+            if (name === 'Formatting.md') return '🎨';
+            if (name === 'CONTRIBUTIONS.md') return '🤝';
+            if (name === 'SECURITY.md') return '🔒';
+            if (name === 'CREDITS.md') return '⭐';
+            return '📄';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTheme();
+            fetchDocumentation();
+        });
+
+        // Auto-refresh documentation every 30 seconds to pick up new files
+        setInterval(() => {
+            fetchDocumentation();
+        }, 30000);
+    </script>
+</body>
+</html>
