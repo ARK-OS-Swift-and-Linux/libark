@@ -13,7 +13,13 @@
 // limitations under the License.
 
 import XCTest
+#if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#endif
 @testable import libark
 
 final class ErrnoTests: XCTestCase {

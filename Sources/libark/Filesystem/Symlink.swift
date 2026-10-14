@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if os(Linux)
+#if canImport(Glibc)
 import Glibc
-#else
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
 import Darwin
 #endif
 

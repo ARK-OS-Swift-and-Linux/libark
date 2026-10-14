@@ -14,9 +14,11 @@
 
 import Foundation
 
-#if os(Linux)
+#if canImport(Glibc)
 import Glibc
-#else
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
 import Darwin
 #endif
 
@@ -41,7 +43,7 @@ public struct Terminal: Sendable {
 
     /// Returns `true` if the underlying file descriptor is connected to a TTY device.
     public var isTTY: Bool {
-        var termios = Glibc.termios()
+        var termios = CTermios()
         // sys_ioctl (16) with TCGETS (0x5401 on x86_64 Linux)
         let ret = Syscall._execute_secure(sys_no: 16, ptr1: UnsafeRawPointer(bitPattern: Int(fd)), ptr2: UnsafeRawPointer(bitPattern: 0x5401), ptr3: UnsafeRawPointer(withUnsafeMutablePointer(to: &termios) { $0 }))
         return ret == 0

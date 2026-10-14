@@ -1,6 +1,6 @@
 # Architecture
 
-`libark` is built on the philosophy that systems programming should be memory-safe, expressive, and strictly bounded. It acts as an isolation layer between generic Swift applications and the raw C APIs of Linux (glibc).
+`libark` is built on the philosophy that systems programming should be memory-safe, expressive, and strictly bounded. It acts as an isolation layer between generic Swift applications and the raw C APIs of Linux (glibc, musl).
 
 ## Core Principles
 

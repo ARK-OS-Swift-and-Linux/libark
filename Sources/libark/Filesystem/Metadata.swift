@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#endif
 import SystemPackage
 
 public struct FileMetadata {
-    private let _stat: stat
+    private let _stat: CStat
     public let path: Path
     public let symlinkTarget: String?
     
-    init(stat: stat, path: Path, symlinkTarget: String? = nil) {
+    init(stat: CStat, path: Path, symlinkTarget: String? = nil) {
         self._stat = stat
         self.path = path
         self.symlinkTarget = symlinkTarget
@@ -78,7 +84,7 @@ public struct FileMetadata {
     }
     
     public static func stat(path: Path) throws -> FileMetadata {
-        var st = Glibc.stat()
+        var st = CStat()
         let ret = path._with_unsafe_c_string { p in
             return Syscall._execute_secure(sys_no: 4, ptr1: UnsafeRawPointer(p), ptr2: UnsafeRawPointer(withUnsafeMutablePointer(to: &st) { $0 }))
         }
@@ -87,7 +93,7 @@ public struct FileMetadata {
     }
     
     public static func lstat(path: Path) throws -> FileMetadata {
-        var st = Glibc.stat()
+        var st = CStat()
         let ret = path._with_unsafe_c_string { p in
             return Syscall._execute_secure(sys_no: 6, ptr1: UnsafeRawPointer(p), ptr2: UnsafeRawPointer(withUnsafeMutablePointer(to: &st) { $0 }))
         }
@@ -102,7 +108,7 @@ public struct FileMetadata {
     }
     
     public static func fstat(fd: Int32) throws -> FileMetadata {
-        var st = Glibc.stat()
+        var st = CStat()
         let ret = Syscall._execute_secure(sys_no: 5, ptr1: UnsafeRawPointer(bitPattern: Int(fd)), ptr2: UnsafeRawPointer(withUnsafeMutablePointer(to: &st) { $0 }))
         if ret != 0 { throw SystemError(errNo: Int32(errno)) }
         return FileMetadata(stat: st, path: Path("/proc/self/fd/\(fd)"))
@@ -113,7 +119,7 @@ public struct FileMetadata {
     }
     
     public static func fstatat(dirfd: Int32, path: String, flags: Int32) throws -> FileMetadata {
-        var st = Glibc.stat()
+        var st = CStat()
         
         let ret = path.withCString { p in
             return Syscall._execute_secure(

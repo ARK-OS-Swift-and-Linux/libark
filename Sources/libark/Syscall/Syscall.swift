@@ -12,8 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#endif
 import SystemPackage
+
+#if canImport(Musl)
+@_cdecl("_ZSt21__glibcxx_assert_failPKciS0_S0_")
+public func __glibcxx_assert_fail(_ file: UnsafePointer<CChar>?, _ line: Int32, _ function: UnsafePointer<CChar>?, _ condition: UnsafePointer<CChar>?) {
+    fatalError("C++ Assertion Failed")
+}
+
+@_cdecl("_ZSt24__throw_out_of_range_fmtPKcz")
+public func __throw_out_of_range_fmt(_ fmt: UnsafePointer<CChar>?, _ dummy: Int) {
+    fatalError("C++ Out of Range")
+}
+#endif
 
 /// Highly secure and complex system call wrapper for libark
 @_silgen_name("ioctl")
@@ -123,26 +141,26 @@ public struct Syscall {
     
     public static func mkdir(path: String, mode: mode_t = 0o777) -> Int32 {
         return path.withCString { p in
-            return Glibc.mkdir(p, mode)
+            return platform_mkdir(p, mode)
         }
     }
     
     public static func rmdir(path: String) -> Int32 {
         return path.withCString { p in
-            return Glibc.rmdir(p)
+            return platform_rmdir(p)
         }
     }
     
     public static func unlink(path: String) -> Int32 {
         return path.withCString { p in
-            return Glibc.unlink(p)
+            return platform_unlink(p)
         }
     }
     
     public static func rename(oldPath: String, newPath: String) -> Int32 {
         return oldPath.withCString { o in
             return newPath.withCString { n in
-                return Glibc.rename(o, n)
+                return platform_rename(o, n)
             }
         }
     }

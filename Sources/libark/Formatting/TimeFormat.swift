@@ -13,7 +13,13 @@
 // limitations under the License.
 
 import Foundation
+#if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#endif
 
 public enum TimeStyle {
     case locale
@@ -39,7 +45,7 @@ public struct Timestamp: Equatable {
     
     public func humanReadable(format: TimeStyle) -> String {
         var t = time_t(self.sec)
-        var tm = Glibc.tm()
+        var tm = CTm()
         localtime_r(&t, &tm)
         
         let formatStr: String

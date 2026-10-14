@@ -14,7 +14,13 @@
 
 import XCTest
 @testable import libark
+#if canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif canImport(Darwin)
+import Darwin
+#endif
 
 final class TimeFormatTests: XCTestCase {
     
