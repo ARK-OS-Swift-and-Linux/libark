@@ -12,7 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// Lexical path parser that converts a path string into an ordered sequence of `PathComponent`s.
+///
+/// Parsing rules:
+/// - Leading slash (`/`) indicates an absolute path and emits a `.root` component.
+/// - Repeated consecutive slashes (`//`, `///`) are treated as a single separator.
+/// - Segment `.` maps to `.current`.
+/// - Segment `..` maps to `.parent`.
+/// - Any other non-empty segment maps to `.name(String)`.
+/// - An empty input string (`""`) emits a single `.current` component (`.`).
+/// - Root-only inputs (`/`, `///`) emit a single `.root` component.
 public struct PathParser {
+    /// Parses a raw path string into an array of lexical `PathComponent` values.
+    ///
+    /// - Parameter path: The raw path string to parse.
+    /// - Returns: An ordered array of `PathComponent` values.
     public static func parse(_ path: String) -> [PathComponent] {
         var components: [PathComponent] = []
         var isAbsolute = false

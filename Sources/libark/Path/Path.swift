@@ -12,28 +12,60 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Foundation
 #if os(Linux)
 import Glibc
 #else
 import Darwin
 #endif
 
-public struct Path: Equatable, CustomStringConvertible {
+/// A representation of a filesystem path providing purely lexical manipulation.
+///
+/// `Path` manages path syntax independent of the underlying filesystem state.
+/// Normalization, joining, component extraction, and relative navigation operate
+/// on lexical tokens without invoking POSIX syscalls or resolving symlinks.
+public struct Path: Equatable, Hashable, CustomStringConvertible, Comparable, ExpressibleByStringLiteral {
+    /// The ordered sequence of lexical components forming this path.
     public let components: [PathComponent]
     
+    /// Indicates whether the original path representation included a trailing slash delimiter,
+    /// indicating an explicit directory intent on non-root paths.
+    public let hasTrailingSlash: Bool
+    
+    /// Initializes a path by parsing a string representation.
+    ///
+    /// - Parameter string: The path string to parse.
     public init(_ string: String) {
+        let isRootOnly = string.allSatisfy { $0 == "/" }
+        self.hasTrailingSlash = string.hasSuffix("/") && !isRootOnly
         self.components = PathParser.parse(string)
     }
     
-    public init(components: [PathComponent]) {
+    /// Initializes a path directly from an array of components.
+    ///
+    /// - Parameters:
+    ///   - components: The sequence of path components.
+    ///   - hasTrailingSlash: Whether to preserve a trailing directory delimiter. Defaults to `false`.
+    public init(components: [PathComponent], hasTrailingSlash: Bool = false) {
         self.components = components.isEmpty ? [.current] : components
+        self.hasTrailingSlash = hasTrailingSlash
     }
     
+    /// Initializes a path from a string literal.
+    public init(stringLiteral value: String) {
+        self.init(value)
+    }
+    
+    /// Indicates whether the path begins at the filesystem root (`/`).
     public var isAbsolute: Bool {
         return components.first == .root
     }
     
+    /// Indicates whether the path is relative to the current directory.
+    public var isRelative: Bool {
+        return !isAbsolute
+    }
+    
+    /// Returns the string representation of the path.
     public var string: String {
         if components.isEmpty { return "" }
         if components.count == 1 && components[0] == .root { return "/" }
@@ -50,14 +82,50 @@ public struct Path: Equatable, CustomStringConvertible {
                 }
             }
         }
+        if hasTrailingSlash && result != "/" && !result.hasSuffix("/") {
+            result += "/"
+        }
         return result
     }
     
     public var description: String { return string }
     
+    /// Lexicographically compares two paths by their component sequences,
+    /// establishing a strict weak ordering consistent with `Equatable`.
+    ///
+    /// Ordering semantics:
+    /// - Paths are compared component-wise using `PathComponent`'s structural total order
+    ///   (`.root < .current < .parent < .name(...)`), rather than raw ASCII string comparison.
+    /// - Equal paths differing only by trailing slash (e.g. `/var/log/` vs `/var/log`)
+    ///   evaluate to neither path being less than the other, strictly satisfying `!(a < b) && !(b < a) <=> a == b`.
+    /// - Lexicographical prefix rule: if all shared prefix components are identical, the path with fewer components is smaller.
+    public static func < (lhs: Path, rhs: Path) -> Bool {
+        let minCount = min(lhs.components.count, rhs.components.count)
+        for i in 0..<minCount {
+            let l = lhs.components[i]
+            let r = rhs.components[i]
+            if l != r {
+                return l < r
+            }
+        }
+        return lhs.components.count < rhs.components.count
+    }
+    
+    /// Returns the parent directory path, or `nil` if this path is the root directory.
+    ///
+    /// Lexical parent rules:
+    /// - Root (`/`) has no parent, returning `nil`.
+    /// - Current directory (`.`) has parent `.`.
+    /// - Relative parent (`..`) has parent `.`.
+    /// - Multi-level relative parents (e.g. `../..`) return their parent prefix (`..`).
+    /// - Ordinary paths return their enclosing directory prefix (e.g. `/var/log` -> `/var`, `a/b` -> `a`, `a` -> `.`).
     public var parent: Path? {
-        if components == [.root] { return nil }
-        var newComponents = components
+        let norm = self.normalize()
+        if norm.components == [.root] { return nil }
+        if norm.components == [.current] {
+            return Path(components: [.current])
+        }
+        var newComponents = norm.components
         newComponents.removeLast()
         if newComponents.isEmpty {
             return Path(components: [.current])
@@ -65,6 +133,20 @@ public struct Path: Equatable, CustomStringConvertible {
         return Path(components: newComponents)
     }
     
+    // MARK: - Equatable & Hashable
+    
+    /// Two paths are considered equal if their lexical component sequences are identical,
+    /// regardless of whether one path has an inspectable trailing directory delimiter.
+    public static func == (lhs: Path, rhs: Path) -> Bool {
+        return lhs.components == rhs.components
+    }
+    
+    /// Hashes the path's component sequence consistently with `==`.
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(components)
+    }
+    
+    /// The leaf filename of the path, or `nil` if the path ends in root or is empty.
     public var filename: String? {
         guard let last = components.last else { return nil }
         if case .name(let str) = last {
@@ -73,36 +155,91 @@ public struct Path: Equatable, CustomStringConvertible {
         return nil
     }
     
+    /// The file extension excluding the leading dot, or `nil` if no extension is present.
+    ///
+    /// Rules:
+    /// - Dotfiles without a secondary extension (e.g. `.bashrc`, `..bashrc`) return `nil`.
+    /// - Multi-dot files (e.g. `archive.tar.gz`, `.tar.gz`) yield the final extension (`gz`).
+    /// - Files without an extension (e.g. `Makefile`) return `nil`.
+    /// - Special paths (`.`, `..`, `/`) return `nil`.
     public var `extension`: String? {
         guard let fname = filename else { return nil }
+        // Find the first character that is not a dot to skip leading dotfile prefixes
+        guard let nonDotIndex = fname.firstIndex(where: { $0 != "." }) else {
+            return nil
+        }
         guard let lastDot = fname.lastIndex(of: ".") else { return nil }
-        if lastDot == fname.startIndex { return nil } // .hidden files don't have extensions
+        // If the only dots are leading dots, there is no extension
+        if lastDot <= nonDotIndex {
+            return nil
+        }
         let ext = fname[fname.index(after: lastDot)...]
+        guard !ext.isEmpty else { return nil }
         return String(ext)
     }
     
+    /// The base filename without its final file extension, or `nil` if no filename exists.
+    ///
+    /// Examples:
+    /// - `syslog.1.gz` -> `syslog.1`
+    /// - `archive.tar.gz` -> `archive.tar`
+    /// - `.bashrc` -> `.bashrc`
+    /// - `..bashrc` -> `..bashrc`
+    /// - `Makefile` -> `Makefile`
+    /// - `file.` -> `file.`
     public var stem: String? {
         guard let fname = filename else { return nil }
-        guard let lastDot = fname.lastIndex(of: ".") else { return fname }
-        if lastDot == fname.startIndex { return fname }
+        guard let nonDotIndex = fname.firstIndex(where: { $0 != "." }) else {
+            return fname
+        }
+        guard let lastDot = fname.lastIndex(of: ".") else {
+            return fname
+        }
+        if lastDot <= nonDotIndex {
+            return fname
+        }
+        // If the dot is at the very end with no extension characters following,
+        // the trailing dot remains part of the stem.
+        if lastDot == fname.index(before: fname.endIndex) {
+            return fname
+        }
         let s = fname[..<lastDot]
         return String(s)
     }
     
     // MARK: - Capabilities
     
+    /// Appends another path onto this path.
+    ///
+    /// If `other` is absolute, it completely replaces `self`.
     public func join(_ other: Path) -> Path {
         let joined = PathJoiner.join(self.components, other.components)
-        return Path(components: joined)
+        let trailing = other.hasTrailingSlash
+        return Path(components: joined, hasTrailingSlash: trailing)
     }
     
+    /// Appends a raw string path onto this path.
     public func join(_ string: String) -> Path {
         return join(Path(string))
     }
     
-    public func normalize() -> Path {
-        let normalized = PathNormalizer.normalize(self.components)
-        return Path(components: normalized)
+    /// Operator overload for path concatenation.
+    public static func / (lhs: Path, rhs: Path) -> Path {
+        return lhs.join(rhs)
+    }
+    
+    /// Operator overload for path and string concatenation.
+    public static func / (lhs: Path, rhs: String) -> Path {
+        return lhs.join(Path(rhs))
+    }
+    
+    /// Returns a lexically normalized path.
+    ///
+    /// Strips trailing slashes by default unless `preserveTrailingSlash` is set to `true`.
+    public func normalize(preserveTrailingSlash: Bool = false) -> Path {
+        let normalizedComponents = PathNormalizer.normalize(self.components)
+        let keepTrailing = preserveTrailingSlash && self.hasTrailingSlash && normalizedComponents != [.root]
+        return Path(components: normalizedComponents, hasTrailingSlash: keepTrailing)
     }
     
     public func absolute(cwd: Path? = nil) -> Path {
@@ -153,8 +290,8 @@ public struct Path: Equatable, CustomStringConvertible {
         }
         
         var relativeComponents: [PathComponent] = []
-        for _ in commonPrefixCount..<resolvedBase.count {
-            if resolvedBase[commonPrefixCount] != .root { // Ignore if the only common prefix was root
+        for i in commonPrefixCount..<resolvedBase.count {
+            if resolvedBase[i] != .root { // Ignore if the only common prefix was root
                 relativeComponents.append(.parent)
             }
         }

@@ -12,7 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// Joins two sequences of `PathComponent`s using lexical concatenation rules.
+///
+/// Joining rules:
+/// - If the right-hand path is absolute (`rhs.first == .root`), it replaces the left-hand path entirely.
+/// - If the right-hand path is empty or `.current`, the left-hand path is returned unchanged.
+/// - If the left-hand path is `.current`, appending a relative right-hand path replaces `.current`.
+/// - Intermediate redundant `.current` components from the right-hand path are omitted.
 public struct PathJoiner {
+    /// Joins `lhs` and `rhs` component arrays into a concatenated component array.
+    ///
+    /// - Parameters:
+    ///   - lhs: The base path components.
+    ///   - rhs: The path components to append.
+    /// - Returns: The joined path components.
     public static func join(_ lhs: [PathComponent], _ rhs: [PathComponent]) -> [PathComponent] {
         if rhs.isEmpty {
             return lhs

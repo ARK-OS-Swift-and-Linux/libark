@@ -12,7 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// Normalizes an array of `PathComponent`s through purely lexical reduction.
+///
+/// Normalization rules:
+/// - Eliminates redundant current-directory references (`.`).
+/// - Evaluates parent-directory references (`..`):
+///   - On an absolute path, `..` cannot navigate above root (`/..` remains `/`).
+///   - On a relative path, `..` cancels preceding named segments (`a/b/..` -> `a`).
+///   - Leading or uncancelled `..` segments on relative paths are preserved (`a/../../b` -> `../b`).
+/// - Collapses multiple root occurrences to a single root.
+/// - Paths that reduce to empty (such as `""` or `a/..`) normalize to the current directory (`.`).
 public struct PathNormalizer {
+    /// Lexically normalizes the given sequence of path components.
+    ///
+    /// - Parameter components: The unnormalized path components.
+    /// - Returns: A new array of normalized path components.
     public static func normalize(_ components: [PathComponent]) -> [PathComponent] {
         var normalized: [PathComponent] = []
         
