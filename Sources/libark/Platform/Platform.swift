@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #if canImport(Glibc)
-@_exported import Glibc
-public typealias CStat = Glibc.stat
-public typealias CTm = Glibc.tm
-public typealias CTermios = Glibc.termios
+import Glibc
+typealias CStat = Glibc.stat
+typealias CTm = Glibc.tm
+typealias CTermios = Glibc.termios
 
 @inlinable
 func platform_mkdir(_ path: UnsafePointer<CChar>, _ mode: mode_t) -> Int32 {
@@ -39,10 +39,10 @@ func platform_rename(_ oldPath: UnsafePointer<CChar>, _ newPath: UnsafePointer<C
 }
 
 #elseif canImport(Musl)
-@_exported import Musl
-public typealias CStat = Musl.stat
-public typealias CTm = Musl.tm
-public typealias CTermios = Musl.termios
+import Musl
+typealias CStat = Musl.stat
+typealias CTm = Musl.tm
+typealias CTermios = Musl.termios
 
 @inlinable
 func platform_mkdir(_ path: UnsafePointer<CChar>, _ mode: mode_t) -> Int32 {
@@ -65,10 +65,10 @@ func platform_rename(_ oldPath: UnsafePointer<CChar>, _ newPath: UnsafePointer<C
 }
 
 #elseif canImport(Darwin)
-@_exported import Darwin
-public typealias CStat = Darwin.stat
-public typealias CTm = Darwin.tm
-public typealias CTermios = Darwin.termios
+import Darwin
+typealias CStat = Darwin.stat
+typealias CTm = Darwin.tm
+typealias CTermios = Darwin.termios
 
 @inlinable
 func platform_mkdir(_ path: UnsafePointer<CChar>, _ mode: mode_t) -> Int32 {
@@ -90,3 +90,86 @@ func platform_rename(_ oldPath: UnsafePointer<CChar>, _ newPath: UnsafePointer<C
     Darwin.rename(oldPath, newPath)
 }
 #endif
+
+#if canImport(Darwin)
+/// In the Apple Darwin SDK (`<sys/types.h>`), device number macros are defined as:
+/// ```c
+/// #define major(x)        ((int32_t)(((u_int32_t)(x) >> 24) & 0xff))
+/// #define minor(x)        ((int32_t)((x) & 0xffffff))
+/// #define makedev(x, y)   ((dev_t)(((x) << 24) | (y)))
+/// ```
+/// Because Swift's Clang importer does not import C function-like preprocessor macros,
+/// these inline functions provide the exact platform-defined equivalent.
+@inline(__always)
+func platform_major(_ dev: dev_t) -> Int {
+    return Int((UInt32(bitPattern: dev) >> 24) & 0xff)
+}
+
+@inline(__always)
+func platform_minor(_ dev: dev_t) -> Int {
+    return Int(UInt32(bitPattern: dev) & 0xffffff)
+}
+#elseif canImport(Glibc) || canImport(Musl)
+/// In Linux (`<sys/sysmacros.h>`), device number macros are defined via `gnu_dev_major` / `gnu_dev_minor`:
+/// ```c
+/// #define major(dev) gnu_dev_major (dev)
+/// #define minor(dev) gnu_dev_minor (dev)
+/// ```
+/// where:
+///   gnu_dev_major(dev) = ((dev >> 8) & 0xfff) | ((dev >> 32) & ~0xfff)
+///   gnu_dev_minor(dev) = (dev & 0xff) | ((dev >> 12) & ~0xff)
+@inline(__always)
+func platform_major(_ dev: dev_t) -> Int {
+    let rdev = UInt64(dev)
+    return Int((rdev >> 8) & 0xfff) | Int((rdev >> 32) & ~0xfff)
+}
+
+@inline(__always)
+func platform_minor(_ dev: dev_t) -> Int {
+    let rdev = UInt64(dev)
+    return Int(rdev & 0xff) | Int((rdev >> 12) & ~0xff)
+}
+#endif
+
+extension CStat {
+    var platformAccessTime: timespec {
+        #if canImport(Darwin)
+        return self.st_atimespec
+        #elseif canImport(Glibc) || canImport(Musl)
+        return self.st_atim
+        #endif
+    }
+
+    var platformModificationTime: timespec {
+        #if canImport(Darwin)
+        return self.st_mtimespec
+        #elseif canImport(Glibc) || canImport(Musl)
+        return self.st_mtim
+        #endif
+    }
+
+    var platformChangeTime: timespec {
+        #if canImport(Darwin)
+        return self.st_ctimespec
+        #elseif canImport(Glibc) || canImport(Musl)
+        return self.st_ctim
+        #endif
+    }
+
+    var platformBirthTime: timespec? {
+        #if canImport(Darwin)
+        return self.st_birthtimespec
+        #elseif canImport(Glibc) || canImport(Musl)
+        return nil
+        #endif
+    }
+
+    var platformMajor: Int {
+        return platform_major(self.st_rdev)
+    }
+
+    var platformMinor: Int {
+        return platform_minor(self.st_rdev)
+    }
+}
+

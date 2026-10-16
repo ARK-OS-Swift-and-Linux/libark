@@ -51,7 +51,7 @@ public struct FileMetadata {
         }
     }
     
-    public var mode: UInt32 { return _stat.st_mode }
+    public var mode: UInt32 { return UInt32(_stat.st_mode) }
     public var permissions: Permissions { return Permissions(mode: _stat.st_mode) }
     
     public var uid: UInt32 { return _stat.st_uid }
@@ -62,13 +62,13 @@ public struct FileMetadata {
     public var blockSize: Int { return Int(_stat.st_blksize) }
     public var linkCount: Int { return Int(_stat.st_nlink) }
     
-    public var accessTime: timespec { return _stat.st_atim }
-    public var modificationTime: timespec { return _stat.st_mtim }
-    public var changeTime: timespec { return _stat.st_ctim }
-    public var birthTime: timespec? { return nil } // statx required for btime on Linux
+    public var accessTime: timespec { return _stat.platformAccessTime }
+    public var modificationTime: timespec { return _stat.platformModificationTime }
+    public var changeTime: timespec { return _stat.platformChangeTime }
+    public var birthTime: timespec? { return _stat.platformBirthTime }
     
-    public var major: Int { return Int((_stat.st_rdev >> 8) & 0xfff) | Int((_stat.st_rdev >> 32) & ~0xfff) }
-    public var minor: Int { return Int(_stat.st_rdev & 0xff) | Int((_stat.st_rdev >> 12) & ~0xff) }
+    public var major: Int { return _stat.platformMajor }
+    public var minor: Int { return _stat.platformMinor }
     
     public var isSymlink: Bool { return fileType == .symbolicLink }
     

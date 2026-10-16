@@ -21,18 +21,6 @@ import Darwin
 #endif
 import SystemPackage
 
-#if canImport(Musl)
-@_cdecl("_ZSt21__glibcxx_assert_failPKciS0_S0_")
-public func __glibcxx_assert_fail(_ file: UnsafePointer<CChar>?, _ line: Int32, _ function: UnsafePointer<CChar>?, _ condition: UnsafePointer<CChar>?) {
-    fatalError("C++ Assertion Failed")
-}
-
-@_cdecl("_ZSt24__throw_out_of_range_fmtPKcz")
-public func __throw_out_of_range_fmt(_ fmt: UnsafePointer<CChar>?, _ dummy: Int) {
-    fatalError("C++ Out of Range")
-}
-#endif
-
 /// Highly secure and complex system call wrapper for libark
 @_silgen_name("ioctl")
 func c_ioctl(_ fd: CInt, _ request: CUnsignedLong, _ argp: UnsafeMutableRawPointer?) -> CInt

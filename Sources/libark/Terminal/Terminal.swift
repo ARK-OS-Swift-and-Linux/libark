@@ -16,10 +16,40 @@ import Foundation
 
 #if canImport(Glibc)
 import Glibc
+
+func platform_terminal_isatty(fd: Int32) -> Bool {
+    return Glibc.isatty(fd) != 0
+}
+
+func platform_terminal_winsize(fd: Int32, _ w: inout winsize) -> Int32 {
+    return withUnsafeMutablePointer(to: &w) { wPtr in
+        Glibc.ioctl(fd, UInt(TIOCGWINSZ), wPtr)
+    }
+}
 #elseif canImport(Musl)
 import Musl
+
+func platform_terminal_isatty(fd: Int32) -> Bool {
+    return Musl.isatty(fd) != 0
+}
+
+func platform_terminal_winsize(fd: Int32, _ w: inout winsize) -> Int32 {
+    return withUnsafeMutablePointer(to: &w) { wPtr in
+        Musl.ioctl(fd, UInt(TIOCGWINSZ), wPtr)
+    }
+}
 #elseif canImport(Darwin)
 import Darwin
+
+func platform_terminal_isatty(fd: Int32) -> Bool {
+    return Darwin.isatty(fd) != 0
+}
+
+func platform_terminal_winsize(fd: Int32, _ w: inout winsize) -> Int32 {
+    return withUnsafeMutablePointer(to: &w) { wPtr in
+        Darwin.ioctl(fd, UInt(TIOCGWINSZ), wPtr)
+    }
+}
 #endif
 
 /// A representation of a terminal interface connected to a file descriptor.
@@ -43,18 +73,13 @@ public struct Terminal: Sendable {
 
     /// Returns `true` if the underlying file descriptor is connected to a TTY device.
     public var isTTY: Bool {
-        var termios = CTermios()
-        // sys_ioctl (16) with TCGETS (0x5401 on x86_64 Linux)
-        let ret = Syscall._execute_secure(sys_no: 16, ptr1: UnsafeRawPointer(bitPattern: Int(fd)), ptr2: UnsafeRawPointer(bitPattern: 0x5401), ptr3: UnsafeRawPointer(withUnsafeMutablePointer(to: &termios) { $0 }))
-        return ret == 0
+        return platform_terminal_isatty(fd: fd)
     }
     
     /// The width (columns) of the terminal. If the terminal width cannot be determined, returns a fallback value of 80.
     public var width: Int {
         var w = winsize()
-        // sys_ioctl (16) with TIOCGWINSZ (0x5413 on x86_64 Linux)
-        let ret = Syscall._execute_secure(sys_no: 16, ptr1: UnsafeRawPointer(bitPattern: Int(fd)), ptr2: UnsafeRawPointer(bitPattern: 0x5413), ptr3: UnsafeRawPointer(withUnsafeMutablePointer(to: &w) { $0 }))
-        if ret == 0 {
+        if platform_terminal_winsize(fd: fd, &w) == 0 {
             return Int(w.ws_col)
         }
         return 80 // Default fallback width
@@ -63,9 +88,7 @@ public struct Terminal: Sendable {
     /// The height (rows) of the terminal. If the terminal height cannot be determined, returns a fallback value of 24.
     public var height: Int {
         var w = winsize()
-        // sys_ioctl (16) with TIOCGWINSZ (0x5413 on x86_64 Linux)
-        let ret = Syscall._execute_secure(sys_no: 16, ptr1: UnsafeRawPointer(bitPattern: Int(fd)), ptr2: UnsafeRawPointer(bitPattern: 0x5413), ptr3: UnsafeRawPointer(withUnsafeMutablePointer(to: &w) { $0 }))
-        if ret == 0 {
+        if platform_terminal_winsize(fd: fd, &w) == 0 {
             return Int(w.ws_row)
         }
         return 24 // Default fallback height
